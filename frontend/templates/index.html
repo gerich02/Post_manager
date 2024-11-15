@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Главная страница</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Open Sans', Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            text-align: center;
+            background-image: url('/static/images/gf_glavnaya.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            color: #c6c7c6;
+        }
+
+        #login-form {
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 20px;
+            border-radius: 8px;
+        }
+
+        button {
+            margin-top: 10px;
+            color: #ffffff;
+            background-color: #0066ff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-family: 'Open Sans', Arial, sans-serif;
+        }
+
+        label {
+            color: #000000;
+        }
+
+        input[type="text"], input[type="password"] {
+            border: 1px solid #c6c7c6;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: 'Open Sans', Arial, sans-serif;
+        }
+    </style>
+</head>
+<body>
+    <h1>COMSOFTLAB POST INTERFACE</h1>
+
+    <form id="login-form" method="post">
+        {% csrf_token %}
+        <label for="login">Логин:</label>
+        <input type="text" id="login" name="login" required>
+        <label for="password">Пароль:</label>
+        <input type="password" id="password" name="password" required>
+        <button type="submit">Проверить почту</button>
+    </form>
+
+    <script>
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        const csrftoken = getCookie('csrftoken');
+
+        $('#login-form').submit(function(event) {
+            event.preventDefault();
+            const login = $('#login').val();
+            const password = $('#password').val();
+
+            $.ajax({
+                type: 'POST',
+                url: '/add-login/',
+                headers: { 'X-CSRFToken': csrftoken },
+                data: { login: login, password: password },
+                success: function(response) {
+                    if (response.status === 'created' || response.status === 'updated') {
+                        window.location.href = `/messages/?login_id=${response.login_id}`;
+                    } else {
+                        alert('Ошибка при добавлении логина: ' + response.message);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    alert('Ошибка при добавлении логина: ' + error);
+                }
+            });
+        });
+    </script>
+</body>
+</html>

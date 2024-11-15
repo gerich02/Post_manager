@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Сообщения</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body {
+            font-family: 'Open Sans', Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            text-align: center;
+            background-image: url('/static/images/gf_glavnaya.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            color: #c6c7c6;
+        }
+        #progress-container {
+            width: 100%;
+            background-color: #f3f3f3;
+            margin: 20px 0;
+        }
+        #progress-bar {
+            width: 0%;
+            height: 30px;
+            background-color: #4caf50;
+            text-align: center;
+            line-height: 30px;
+            color: white;
+            font-weight: bold;
+        }
+        .button-container {
+            margin: 20px 0;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            color: #c6c7c6;
+            background-color: #0066ff;
+            border: none;
+            border-radius: 5px;
+            font-family: 'Open Sans', Arial, sans-serif;
+        }
+        h1, h2 {
+            font-weight: bold;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid #c6c7c6;
+            padding: 10px;
+            font-size: 18px;
+        }
+        th {
+            background-color: #0066ff;
+            color: #c6c7c6;
+            font-weight: bold;
+        }
+        td {
+            color: #c6c7c6;
+        }
+        tbody tr:nth-child(even) {
+            background-color: #1a1a1a;
+        }
+        tbody tr:nth-child(odd) {
+            background-color: #333333;
+        }
+    </style>
+</head>
+<body>
+    <h1>Сообщения</h1>
+
+    <div class="button-container">
+        <button id="back-to-home">Вернуться на главную</button>
+    </div>
+
+    <div id="progress-container">
+        <div id="progress-bar">Ожидание...</div>
+    </div>
+
+    <div id="message-count">Всего сообщений: 0</div>
+
+    <h2>Сообщения</h2>
+    <table id="messages-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Тема</th>
+                <th>Дата отправки</th>
+                <th>Дата получения</th>
+                <th>Текст сообщения</th>
+                <th>Список вложений</th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+
+    <script>
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        const csrftoken = getCookie('csrftoken');
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const loginId = urlParams.get('login_id');
+        const socket = new WebSocket('ws://localhost:8000/ws/messages/');
+
+        function updateMessageCount() {
+            const messageCount = $('#messages-table tbody tr').length;
+            $('#message-count').text(`Всего сообщений: ${messageCount}`);
+        }
+
+        socket.onopen = function(event) {
+            socket.send(JSON.stringify({'login_id': loginId}));
+        };
+
+        socket.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            console.log('Received data:', data);
+
+            if (data.status === 'reading') {
+                $('#progress-bar').text('Чтение сообщений...').css('width', data.progress + '%');
+            } else if (data.status === 'loading') {
+                $('#progress-bar').text('Загрузка сообщений...').css('width', data.progress + '%');
+                $('#messages-table tbody').empty();
+                if (data.messages) {
+                    data.messages.forEach(function(message) {
+                        console.log('Appending message:', message);
+                        $('#messages-table tbody').append(`
+                            <tr>
+                                <td>${message.id || ''}</td>
+                                <td>${message.theme || ''}</td>
+                                <td>${message.send_date || ''}</td>
+                                <td>${message.receipt_date || ''}</td>
+                                <td>${message.text || ''}</td>
+                                <td>${message.attachments_list || ''}</td>
+                            </tr>
+                        `);
+                    });
+                }
+                updateMessageCount();
+            } else if (data.status === 'completed') {
+                $('#progress-bar').text('Завершено');
+                updateMessageCount();
+            }
+        };
+
+        socket.onerror = function(error) {
+            console.error('WebSocket error:', error);
+        };
+
+        socket.onclose = function(event) {
+            if (!event.wasClean) {
+                console.error('WebSocket connection error:', event.reason);
+            }
+        };
+
+        $('#back-to-home').click(function() {
+            window.location.href = '/';
+        });
+    </script>
+</body>
+</html>
